@@ -56,9 +56,9 @@ Final model (B), overall accuracy **98.25%**:
 Confusion matrix (rows = true, columns = predicted; order: ai_phishing, legitimate, phishing):
 
 ```
-[[1234   28   10]
- [  10 1529    1]
- [   1    3  205]]
+ [ 1234    28     10]
+ [  10    1529     1]
+ [   1     3     205]
 ```
 
 The main error type is polished AI phishing classified as legitimate (28 of 1,272), which is expected because such messages imitate normal business email.
