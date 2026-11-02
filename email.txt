@@ -1,0 +1,9 @@
+Subject: Security Alert: Unusual Sign-in Activity Detected
+
+Dear Valued Customer,
+
+We hope this message finds you well. Our security team has identified unusual sign-in activity on your account from an unrecognized device. To protect your information, we kindly ask you to review and confirm your recent activity at your earliest convenience: https://account-review-secure.co/verify
+
+Thank you for your prompt attention to this matter.
+Sincerely,
+The Security Team

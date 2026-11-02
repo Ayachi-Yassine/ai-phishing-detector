@@ -1,0 +1,38 @@
+<!-- Add to /var/ossec/etc/rules/local_rules.xml on the Wazuh MANAGER, then restart wazuh-manager -->
+<group name="local,ai_phishing,email,">
+
+  <!-- Parent rule: any event produced by the AI phishing detector (JSON log) -->
+  <rule id="100100" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="source">^ai-phish-detector$</field>
+    <description>AI phishing detector: email analyzed</description>
+  </rule>
+
+  <rule id="100101" level="3">
+    <if_sid>100100</if_sid>
+    <field name="verdict">^legitimate$</field>
+    <description>AI phishing detector: legitimate email ($(email_subject))</description>
+  </rule>
+
+  <rule id="100102" level="10">
+    <if_sid>100100</if_sid>
+    <field name="verdict">^phishing$</field>
+    <description>AI phishing detector: phishing email detected ($(email_subject))</description>
+    <mitre><id>T1566</id></mitre>
+  </rule>
+
+  <rule id="100103" level="12">
+    <if_sid>100100</if_sid>
+    <field name="verdict">^ai_phishing$</field>
+    <description>AI phishing detector: AI-GENERATED phishing email detected ($(email_subject))</description>
+    <mitre><id>T1566</id></mitre>
+  </rule>
+
+  <!-- Campaign correlation: 3 phishing detections within 1 hour -->
+  <rule id="100104" level="14" frequency="3" timeframe="3600">
+    <if_matched_sid>100103</if_matched_sid>
+    <description>AI phishing campaign: 3+ AI-generated phishing emails in 1 hour</description>
+    <mitre><id>T1566</id></mitre>
+  </rule>
+
+</group>

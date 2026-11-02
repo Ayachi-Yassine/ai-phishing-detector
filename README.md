@@ -100,6 +100,7 @@ python ai_phish_detector.py predict email.txt
 
 ```json
 {
+  "source": "ai-phish-detector",
   "timestamp": "2026-11-02T19:44:27+00:00",
   "verdict": "ai_phishing",
   "confidence": 0.954,
@@ -110,6 +111,51 @@ python ai_phish_detector.py predict email.txt
   "urls": ["https://account-review-secure.co/verify"]
 }
 ```
+
+## SOC integration (Wazuh)
+
+The detector can feed alerts into a Wazuh-based SOC.
+
+```
+.eml files in inbox/ -> soc_watcher.py (runs the model) -> alerts.json (one JSON line per email)
+   -> Wazuh agent -> Wazuh manager (custom rules) -> dashboard alerts
+```
+
+**1. Run the watcher** on the machine that has the Wazuh agent. It classifies every `.eml` or `.txt` file dropped into the inbox folder, appends one JSON line per email to the log file, and moves processed files to `inbox/processed/`:
+
+```bash
+python soc_watcher.py <inbox_folder> <alerts_log_file>
+# example
+python3 soc_watcher.py /opt/ai-phish/inbox /var/log/ai-phish/alerts.json
+```
+
+Use `--once` to process the current files and exit instead of watching continuously.
+
+**2. Configure the Wazuh agent** to read the log by adding this to `/var/ossec/etc/ossec.conf`, then restart the agent (`sudo systemctl restart wazuh-agent`):
+
+```xml
+<localfile>
+  <log_format>json</log_format>
+  <location>/var/log/ai-phish/alerts.json</location>
+</localfile>
+```
+
+**3. Add the detection rules** on the Wazuh manager: copy the contents of `wazuh_local_rules.xml` into `/var/ossec/etc/rules/local_rules.xml` and restart the manager (`sudo systemctl restart wazuh-manager`).
+
+| Rule ID | Level | Trigger |
+|---|---|---|
+| 100100 | 3 | Parent rule: any event from the detector |
+| 100101 | 3 | Legitimate email |
+| 100102 | 10 | Phishing email (MITRE T1566) |
+| 100103 | 12 | AI-generated phishing email (MITRE T1566) |
+| 100104 | 14 | Campaign: 3 or more AI phishing detections within 1 hour |
+
+**4. Verify the rules** on the manager with `sudo /var/ossec/bin/wazuh-logtest`: paste one line from `alerts.json` and check that rule 100103 matches an AI phishing event. In the dashboard, filter with `rule.id:100103`.
+
+Notes:
+- The rule IDs (100100-100104) are in Wazuh's custom range. Change them if they clash with existing custom rules.
+- The inbox is populated by whatever collects reported emails (mailbox export, forwarding, a "report phishing" button). This part is outside the scope of this repository.
+- The rules are written for Wazuh 4.x and should be validated with `wazuh-logtest` in your own environment.
 
 ## Limitations
 
@@ -124,12 +170,15 @@ python ai_phish_detector.py predict email.txt
 - Evaluate on AI phishing from additional LLMs.
 - Add informal legitimate emails (for example the Enron corpus) to reduce false positives on short messages.
 - Fine-tune a transformer (DistilBERT) and compare it with the linear baseline.
-- Integrate with a SIEM (Wazuh, ELK or Splunk) and enrich extracted URLs with threat-intelligence lookups.
+- Connect the inbox to a real mailbox (IMAP) and enrich extracted URLs with threat-intelligence lookups (VirusTotal, URLhaus).
+- Wrap the detector in a REST API (FastAPI) so a SOAR platform can call it directly.
 
 ## Project structure
 
 ```
-ai_phish_detector.py   # training, evaluation and prediction
+ai_phish_detector.py     # training, evaluation, prediction (analyze() returns the alert as a dict)
+soc_watcher.py           # watches an inbox folder, writes JSON alerts for Wazuh
+wazuh_local_rules.xml    # custom Wazuh detection rules
 requirements.txt
 README.md
 ```

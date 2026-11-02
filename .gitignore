@@ -1,0 +1,12 @@
+# dataset (download separately, see README)
+PhishFuzzer/
+PhishFuzzer-main/
+
+# trained model (regenerate with the train command)
+*.joblib
+
+# python
+__pycache__/
+*.pyc
+.venv/
+*.zip
